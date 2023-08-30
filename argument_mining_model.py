@@ -41,7 +41,7 @@ def config():
 
     # You can have multiple datasets per list. All datasets (per list) will be
     # encoded and stacked to form a new combined one
-    datasets = dict(train=['SciARK.json'], dev=[], test=['AbstRCT_test.json'])
+    datasets = dict(train=['data/SciARK.json'], dev=[], test=['data/AbstRCT_test.json'])
    
     train_test_splits = dict(train=0.9, dev=0.05, test=0.05)
 

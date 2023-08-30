@@ -338,7 +338,7 @@ def bert_transformer(sents_shape, num_classes, transformer_params):
 
 class TransformerBlockGelu(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
+        super(TransformerBlockGelu, self).__init__()
         self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation="gelu"), layers.Dense(embed_dim),]
