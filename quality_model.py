@@ -34,27 +34,27 @@ def load_dataset(file_path):
     scores = [int(score) for score in df.iloc[:, 1].tolist()]
     return arguments, scores
 
+#file_path = 'BINARY_TRAIN_QUAL_FORM_RAW.csv'
+#print("Loading dataset...")
+#arguments, scores = load_dataset(file_path)
+#tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
 
-print("Loading dataset...")
-arguments, scores = load_dataset(file_path)
-tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
+#train_args, val_args, train_scores, val_scores = train_test_split(arguments, scores, test_size=0.1, random_state=42)
 
-train_args, val_args, train_scores, val_scores = train_test_split(arguments, scores, test_size=0.1, random_state=42)
+#train_dataset = ArgumentDataset(train_args, train_scores, tokenizer)
+#val_dataset = ArgumentDataset(val_args, val_scores, tokenizer)
 
-train_dataset = ArgumentDataset(train_args, train_scores, tokenizer)
-val_dataset = ArgumentDataset(val_args, val_scores, tokenizer)
+#train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+#val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False)
 
-train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False)
-
-base_model = RobertaForSequenceClassification.from_pretrained('roberta-base')
+#base_model = RobertaForSequenceClassification.from_pretrained('roberta-base')
 
 
 class ModelQualityPredictor(nn.Module):
     def __init__(self, base_model):
         super(ModelQualityPredictor, self).__init__()
         self.base_model = base_model
-        self.dropout = nn.Dropout(dropout_prob)
+        self.dropout = nn.Dropout(0.4)
         self.classifier = nn.Linear(base_model.config.hidden_size, 2)
 
     def forward(self, input_ids, attention_mask):

@@ -20,7 +20,7 @@ tqdm.pandas(smoothing=0)
 
 @ex.config
 def config():
-    seed = 2021
+    seed = 2020
    
 
     # Argument Labels.
@@ -37,7 +37,7 @@ def config():
     # e.g., 'allenai/scibert_scivocab_uncased', 'bert_base_uncased', etc.
     sentence_encoder = 'allenai/scibert_scivocab_uncased'
     # The file name of the trained model.
-    save_model = 'trained_models/scibert_transformer.h5'
+    #save_model = 'trained_models/scibert_transformer.h5'
 
     # You can have multiple datasets per list. All datasets (per list) will be
     # encoded and stacked to form a new combined one
