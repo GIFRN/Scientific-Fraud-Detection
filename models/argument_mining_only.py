@@ -39,7 +39,7 @@ def config():
     # The file name of the trained model.
     save_model = 'trained_models/bert_based_context_encoder.h5'
 
-    datasets = dict(train=['data/SciARK_AM.json'], dev=[], test=['data/AbstRCT_AM.json'])
+    datasets = dict(train=['../data/SciARK_AM.json'], dev=[], test=['../data/AbstRCT_AM.json'])
 
     
     transformer = dict(
