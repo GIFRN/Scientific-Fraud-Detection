@@ -1,5 +1,5 @@
 from transformers import RobertaTokenizerFast, RobertaForSequenceClassification, AutoTokenizer, AutoModel
-from model_quality_rob_binary_classification import ModelQualityPredictor
+from quality_model import ModelQualityPredictor
 import torch
 import csv
 import json
@@ -235,107 +235,240 @@ model_save_path = 'quality_evaluation_model.pt'
 loaded_model = load_saved_model(model_save_path, base_model)
 
 
-def process_datasets(datasets, _config, _log):
-    # Collect abstracts into an array
-    raw_test_data = []
-    for val in datasets['raw']['test'].values():
-        for v in list(val.values()):
-            raw_test_data.append((v['id'], v['sentences']))
-    
-    # Encode datasets
-    embedded_datasets = encode_datasets(datasets, _config, _log)
-    X_train = embedded_datasets['X']['train']
-    y_train = embedded_datasets['y']['train']
-    X_dev = embedded_datasets['X']['dev']
-    
-    if X_dev is not None:
-        y_dev = embedded_datasets['y']['dev']
-        validation_data = (X_dev, y_dev)
-    else:
-        validation_data = None
-
-    X_test = embedded_datasets['X']['test']
-    y_test = embedded_datasets['y']['test']
-    id_test = np.array(embedded_datasets['ids']['test'])
-
-    return X_train, y_train, validation_data, X_test, y_test, id_test, raw_test_data
-
-def process_prediction(model, X_test, id_test, raw_test_data):
-    logits = model(X_test)
-    y_pred_unsorted = softmax(logits).argmax(-1)
-    y_pred_unsorted = np.array(y_pred_unsorted)
-    
-    id_test = np.array(id_test)
-    sort_indices = np.argsort(id_test)
-    
-    logits = np.array(logits)
-    logits_sorted = logits[sort_indices]
-    
-    y_pred = y_pred_unsorted[sort_indices]
-    
-    raw_test_data.sort(key=lambda x: x[0])  # sorts in-place
-    
-    return y_pred, logits_sorted, raw_test_data
-
-
-def evaluate_predictions(y_true, y_pred, label):
-    accuracy = accuracy_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred, average='weighted')
-    recall = recall_score(y_true, y_pred, average='weighted')
-    f1 = f1_score(y_true, y_pred, average='weighted')
-    
-    print(f"Metrics for {label} data:")
-    print(f"  Accuracy : {accuracy}")
-    print(f"  Precision: {precision}")
-    print(f"  Recall   : {recall}")
-    print(f"  F1 Score : {f1}\n")
-    
-    return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
-
-
 @ex.main
 def main(_config, _log):
     seed = _config['seed']
-    np.random.seed(seed)
+    #np.random.seed(seed)
     torch.seed = seed
     torch.manual_seed(seed)
-    random.seed(seed)
+    #random.seed(seed)
     if torch.cuda.is_available():
         torch.manual_seed(seed)
 
-    datasets_fraudulent = load_datasets_fraudulent(_config)
-    datasets_legitimate = load_datasets_legitimate(_config)
     
-    X_train_fraudulent, y_train_fraudulent, validation_data_fraudulent, \
-    X_test_fraudulent, y_test_fraudulent, id_test_fraudulent, raw_test_data_fraudulent = \
-    process_datasets(datasets_fraudulent, _config, _log)
     
-    X_train_legitimate, y_train_legitimate, validation_data_legitimate, \
-    X_test_legitimate, y_test_legitimate, id_test_legitimate, raw_test_data_legitimate = \
-    process_datasets(datasets_legitimate, _config, _log)
+    datasets = load_datasets_fraudulent(_config)
 
-    # Process fraudulent data
-    y_pred_fraudulent, logits_sorted_fraudulent, sorted_raw_test_data_fraudulent = \
-    process_prediction(model, X_test_fraudulent, id_test_fraudulent, raw_test_data_fraudulent)
-    
-    # Process legitimate data
-    y_pred_legitimate, logits_sorted_legitimate, sorted_raw_test_data_legitimate = \
-    process_prediction(model, X_test_legitimate, id_test_legitimate, raw_test_data_legitimate)
+    raw_test_data = []
+    for val in datasets['raw']['test'].values():
 
-    # Evaluate fraudulent data
-    metrics_fraudulent = evaluate_predictions(y_test_fraudulent, y_pred_fraudulent, "Fraudulent")
+        for v in list(val.values()):
+            raw_test_data.append((v['id'], v['sentences']))
+
+    embdeded_datasets = encode_datasets(datasets, _config, _log)
+    X_train = embdeded_datasets['X']['train']
+    y_train = embdeded_datasets['y']['train']
+    X_dev = embdeded_datasets['X']['dev']
+    if X_dev is not None:
+        y_dev = embdeded_datasets['y']['dev']
+        validation_data = (X_dev, y_dev)
+    else:
+        validation_data = None
+ 
+    model = bert_transformer(
+    sents_shape=_config['sents_shape'],
+    num_classes=_config['num_classes'],
+    transformer_params=_config['transformer'])
+    print(model.summary(100))
+
+    callbacks = [
+        tf.keras.callbacks.EarlyStopping(
+            patience=5, restore_best_weights=True),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=_config['save_model'], save_best_only=True, verbose=1)
+    ]
+    if validation_data is None:
+        model.fit(
+            X_train,
+            y_train,
+            callbacks=callbacks,
+            **_config['model_fit'],
+            verbose=2)
+    else:
+        model.fit(
+            X_train,
+            y_train,
+            validation_data=validation_data,
+            callbacks=callbacks,
+            epochs=_config['model_fit']['epochs'],
+            verbose=2)
+
+    X_test = embdeded_datasets['X']['test']
+    y_test = embdeded_datasets['y']['test']
+
+    logits = model(X_test)
+    y_pred_unsorted = softmax(logits).argmax(-1)
+    id_test = embdeded_datasets['ids']['test']
+    id_test = np.array(id_test)
+    y_pred_unsorted = np.array(y_pred_unsorted)
+    sort_indices = np.argsort(id_test)
+    logits = np.array(logits)
+    logits_sorted = logits[sort_indices]
+    y_pred = y_pred_unsorted[sort_indices]
+    raw_test_data.sort(key=lambda x: x[0])  # sorts in-place
     
-    # Evaluate legitimate data
-    metrics_legitimate = evaluate_predictions(y_test_legitimate, y_pred_legitimate, "Legitimate")
+    score = []
+
     
-    # Calculate and display overall scores
-    overall_metrics = {}
-    for key in metrics_fraudulent.keys():
-        overall_metrics[key] = (metrics_fraudulent[key] + metrics_legitimate[key]) / 2
+    for idx, prediction in enumerate(y_pred):
+        prediction = [i for i in prediction if i != 0]
+
+        raw_text = raw_test_data[idx]
+        
+        raw_text = raw_text[1]
+
+        claims = ''
+        premises = ''
+        
+        for id_pred, pred in enumerate(prediction):
+            if id_pred >= len(raw_text):
+                print(id_pred,raw_text)
+            elif len(raw_text[id_pred]) > 1:
+                if pred == 2:
+                    if raw_text[id_pred][-1] == '.':
+                        premises += (raw_text[id_pred] + ' ')
+                    else:
+                        premises += (raw_text[id_pred] + '. ')
+                if pred == 3:
+                    if raw_text[id_pred][-1] == '.':
+                        claims += (raw_text[id_pred] + ' ')
+                    else:
+                        claims += (raw_text[id_pred] + '. ')
+
+        text = claims + premises
+
+        true_label = 0 
+        
+        predicted_class, probabilities = infer(loaded_model, text, tokenizer)
+        score.append(predicted_class)
+
+    fraudulent_acc = (score.count(0))/len(score)
     
-    print("Overall Metrics:")
-    for key, value in overall_metrics.items():
-        print(f"  {key.capitalize()}: {value}")
+    fraudulent_t = (score.count(0))
+    fraudulent_f = (score.count(1))
+
+##
+    
+    datasets = load_datasets_legitimate(_config)
+
+    raw_test_data = []
+    for val in datasets['raw']['test'].values():
+
+        for v in list(val.values()):
+            raw_test_data.append((v['id'], v['sentences']))
+
+    embdeded_datasets = encode_datasets(datasets, _config, _log)
+    X_train = embdeded_datasets['X']['train']
+    y_train = embdeded_datasets['y']['train']
+    X_dev = embdeded_datasets['X']['dev']
+    if X_dev is not None:
+        y_dev = embdeded_datasets['y']['dev']
+        validation_data = (X_dev, y_dev)
+    else:
+        validation_data = None
+ 
+    model = bert_transformer(
+    sents_shape=_config['sents_shape'],
+    num_classes=_config['num_classes'],
+    transformer_params=_config['transformer'])
+    print(model.summary(100))
+
+    callbacks = [
+        tf.keras.callbacks.EarlyStopping(
+            patience=5, restore_best_weights=True),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=_config['save_model'], save_best_only=True, verbose=1)
+    ]
+    if validation_data is None:
+        model.fit(
+            X_train,
+            y_train,
+            callbacks=callbacks,
+            **_config['model_fit'],
+            verbose=2)
+    else:
+        model.fit(
+            X_train,
+            y_train,
+            validation_data=validation_data,
+            callbacks=callbacks,
+            epochs=_config['model_fit']['epochs'],
+            verbose=2)
+
+    X_test = embdeded_datasets['X']['test']
+    y_test = embdeded_datasets['y']['test']
+
+    logits = model(X_test)
+    y_pred_unsorted = softmax(logits).argmax(-1)
+    id_test = embdeded_datasets['ids']['test']
+    id_test = np.array(id_test)
+    y_pred_unsorted = np.array(y_pred_unsorted)
+    sort_indices = np.argsort(id_test)
+    logits = np.array(logits)
+    logits_sorted = logits[sort_indices]
+    y_pred = y_pred_unsorted[sort_indices]
+    raw_test_data.sort(key=lambda x: x[0])  # sorts in-place
+    
+    score = []
+
+    
+    for idx, prediction in enumerate(y_pred):
+        prediction = [i for i in prediction if i != 0]
+
+        raw_text = raw_test_data[idx]
+        
+        raw_text = raw_text[1]
+
+        claims = ''
+        premises = ''
+        
+        for id_pred, pred in enumerate(prediction):
+            if id_pred >= len(raw_text):
+                print(id_pred,raw_text)
+            elif len(raw_text[id_pred]) > 1:
+                if pred == 2:
+                    if raw_text[id_pred][-1] == '.':
+                        premises += (raw_text[id_pred] + ' ')
+                    else:
+                        premises += (raw_text[id_pred] + '. ')
+                if pred == 3:
+                    if raw_text[id_pred][-1] == '.':
+                        claims += (raw_text[id_pred] + ' ')
+                    else:
+                        claims += (raw_text[id_pred] + '. ')
+
+        text = claims + premises
+
+        true_label = 0 
+        
+        predicted_class, probabilities = infer(loaded_model, text, tokenizer)
+        score.append(predicted_class)
+
+    legitimate_acc = (score.count(1))/len(score)
+
+    legitimate_t = (score.count(1))
+    legitimate_f = (score.count(0))
+
+    total_acc = (fraudulent_t + legitimate_t) / (fraudulent_t + legitimate_t + fraudulent_f + legitimate_f)
+    precision = fraudulent_t / (fraudulent_t + legitimate_f)
+    recall = fraudulent_t / (fraudulent_t + fraudulent_f)
+    f1 = 2 * (precision * recall) / (precision + recall)
+    
+
+    print(f"Number of articles correctly classified:\n")
+    print(f"Fraudulent: {fraudulent_t}")
+    print(f"Legitimate: {legitimate_t}")
+    print(f"Number of articles falsely classified:\n")
+    print(f"Fraudulent: {fraudulent_f}")
+    print(f"Legitimate: {legitimate_f}")
+
+    print(f"Fraudulent accuracy: {fraudulent_acc}")
+    print(f"Legitimate accuracy: {legitimate_acc}")
+    print(f"Overall accuracy: {total_acc}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"F1: {f1}")
+    
  
 
 if __name__ == '__main__':
