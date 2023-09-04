@@ -231,7 +231,7 @@ def infer(model, text, tokenizer):
 # Load the saved model
 tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
 base_model = RobertaForSequenceClassification.from_pretrained('roberta-base')
-model_save_path = 'quality_evaluation_model.pt'
+model_save_path = '../quality_evaluation_model.pt'
 loaded_model = load_saved_model(model_save_path, base_model)
 
 
