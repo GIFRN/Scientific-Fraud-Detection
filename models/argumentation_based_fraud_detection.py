@@ -48,8 +48,8 @@ def config():
 
     # You can have multiple datasets per list. All datasets (per list) will be
     # encoded and stacked to form a new combined one.
-    datasets_legitimate = dict(train=['data/SciARK.json'], dev=[], test=['data/legitimate_abstracts.json'])
-    datasets_fraudulent = dict(train=['data/SciARK.json'], dev=[], test=['data/fraudulent_abstracts.json'])
+    datasets_legitimate = dict(train=['../data/SciARK.json'], dev=[], test=['../data/legitimate_abstracts.json'])
+    datasets_fraudulent = dict(train=['../data/SciARK.json'], dev=[], test=['../data/fraudulent_abstracts.json'])
     train_test_splits = dict(train=0.9, dev=0.05, test=0.05)
 
     # Transformer block (Context Encoder) hyperparameters.
