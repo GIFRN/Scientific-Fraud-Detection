@@ -8,7 +8,7 @@ from scipy import stats
 from scipy.special import softmax
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
-
+import tensorflow as tf
 
 def mean_confidence_interval(
         data, confidence=0.95, bootstrap=False, n_iterations=1000):
@@ -104,7 +104,7 @@ def encode_text(text, bert_tokenizer, bert_model, device):
     """
     with torch.no_grad():
         try:
-            sent_ids = bert_tokenizer.encode(text.lower())
+            sent_ids = bert_tokenizer.encode(text.lower(), max_length=512, truncation=True, padding='max_length')
             bert_input = torch.tensor([sent_ids]).to(device)
             outputs = bert_model(bert_input)
             cls_token = outputs[0][0][0]
@@ -112,9 +112,22 @@ def encode_text(text, bert_tokenizer, bert_model, device):
             # pooler = outputs[1]
             # emb = pooler.cpu().numpy()
         except RuntimeError:
-            print(text)
+            print(f"Error while processing: {text}. Error message: {e}")
             pass
     return emb
+
+
+#    with tf.device('/GPU:0'):
+#        try:
+#            sent_ids = bert_tokenizer.encode(text.lower())
+#            bert_input = tf.convert_to_tensor([sent_ids])
+#            outputs = bert_model(bert_input)
+#            cls_token = outputs[0][0][0]
+#            emb = cls_token.numpy()  # Convert to numpy array
+#        except RuntimeError:
+#            print(text)
+#            pass
+#    return emb
 
 
 def pad_array(array, max_rows, truncate='pre'):
@@ -151,8 +164,11 @@ def load_dataset(file_path, random_state=None):
     with open(file_path) as fp:
         corpus = json.load(fp)
 
-    documents, sdgs, texts, labels = [], [], [], []
+    ids, documents, sdgs, texts, labels = [], [], [], [], []
+
     for abstract in corpus:
+        ids.append(abstract) 
+        
         try:
             if 'sdg' in corpus[abstract]:
                 sdgs.append(corpus[abstract]['sdg'])
@@ -166,10 +182,12 @@ def load_dataset(file_path, random_state=None):
 
     assert len(texts) == len(labels)
     data = pd.DataFrame(
-        zip(documents, sdgs, texts, labels),
-        columns=['document', 'sdg', 'sentences', 'labels'])
+        zip(ids, documents, sdgs, texts, labels),
+        columns=['id', 'document', 'sdg', 'sentences', 'labels'])
+        
     if random_state is not None:
         data = data.sample(frac=1, random_state=random_state)
+    print(data[:3])
     return data
 
 
