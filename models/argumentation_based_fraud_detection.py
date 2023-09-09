@@ -171,7 +171,7 @@ def encode_datasets(datasets, config, _log):
                 (len(data), max_sentences, 768))
             datasets['X'][dataset][corpus] = X
          
-            # Add ids to the dataset        
+            # Add ids to the dataset
             datasets['ids'][dataset][corpus] = data['id'].values
  
             # Pickle encoded data.
@@ -455,12 +455,12 @@ def main(_config, _log):
     f1 = 2 * (precision * recall) / (precision + recall)
     
 
-    print(f"Number of articles correctly classified:\n")
+    print(f"Number of articles correctly classified:")
     print(f"Fraudulent: {fraudulent_t}")
-    print(f"Legitimate: {legitimate_t}")
-    print(f"Number of articles falsely classified:\n")
+    print(f"Legitimate: {legitimate_t}\n")
+    print(f"Number of articles falsely classified:")
     print(f"Fraudulent: {fraudulent_f}")
-    print(f"Legitimate: {legitimate_f}")
+    print(f"Legitimate: {legitimate_f}\n")
 
     print(f"Fraudulent accuracy: {fraudulent_acc}")
     print(f"Legitimate accuracy: {legitimate_acc}")
