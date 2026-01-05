@@ -4,6 +4,16 @@
 
 This repository contains the **corrected implementation** of the system described in the 2024 paper "Detecting Scientific Fraud Using Argument Mining". The original results were invalid due to an error found by independent researchers. This updated codebase fixes those issues.
 
+## Changes
+
+The old arugment quality data (GAQ corpus) is now defunct (is no longer available), so this codevase introduces a new synthetic data generation script, and the updated results are based on this:
+
+Fraudulent accuracy (Recall/Sensitivity): 0.9640
+Legitimate accuracy (Specificity): 0.8744
+Overall accuracy: 0.9151
+Precision: 0.8645
+Recall: 0.9640
+F1 Score: 0.9116
 ---
 
 ## Overview
